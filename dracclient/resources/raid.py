@@ -211,11 +211,21 @@ class RAIDManagement(object):
         drac_bus_protocol = self._get_physical_disk_attr(drac_disk,
                                                          'BusProtocol')
 
+        try:
+            controller_str = fqdd.split(':')[2]
+        except IndexError:
+            import re
+            match = re.search('RAID\..*', fqdd)
+            if match:
+                controller_str = match.group(0)
+            else:
+                controller_str = "<UNKNOWN>"
+
         return PhysicalDisk(
             id=fqdd,
             description=self._get_physical_disk_attr(drac_disk,
                                                      'DeviceDescription'),
-            controller=fqdd.split(':')[2],
+            controller=controller_str,
             manufacturer=self._get_physical_disk_attr(drac_disk,
                                                       'Manufacturer'),
             model=self._get_physical_disk_attr(drac_disk, 'Model'),
@@ -231,8 +241,12 @@ class RAIDManagement(object):
             raid_state=DISK_RAID_STATUS[drac_raid_status])
 
     def _get_physical_disk_attr(self, drac_disk, attr_name):
-        return utils.get_wsman_resource_attr(
-            drac_disk, uris.DCIM_PhysicalDiskView, attr_name)
+        try:
+            result = utils.get_wsman_resource_attr(
+                        drac_disk, uris.DCIM_PhysicalDiskView, attr_name)
+        except:
+            result = "<UNKNOWN>"
+        return result
 
     def create_virtual_disk(self, raid_controller, physical_disks, raid_level,
                             size_mb, disk_name=None, span_length=None,
